@@ -124,7 +124,7 @@ fn take_ascii_byte(b: &[u8]) -> IResult<&[u8], &[u8]> {
 /// CLRF characters. Thankfully mail servers don't follow RFCs and violate this anyways so we
 /// do allow this *non-compliant* behavior to ease user suffering
 fn take_header_content(b: &[u8]) -> IResult<&[u8], &[u8]> {
-    let (rest, (_ws, _token, _more_tokens)) = tuple((
+    let (rest, (_ws, _token, _more_tokens, _trailing_ws)) = tuple((
         space0,
         take_token,
         many0(tuple((
@@ -132,6 +132,7 @@ fn take_header_content(b: &[u8]) -> IResult<&[u8], &[u8]> {
             space1,
             take_token,
         ))),
+        space0,
     ))(b)?;
     let bytes_read = b.len() - rest.len();
     Ok((rest, &b[..bytes_read]))
@@ -193,6 +194,8 @@ mod tests {
     use super::*;
     const TEXT_ARTICLE: &str =
         include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/text_article"));
+    const TEXT_ARTICLE_TRAILING_WHITESPACE: &str =
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/text_article_trailing_whitespace"));
 
     const FOLDED_HEADER: &[u8; 127] =
         b"X-Received: by 2002:ac8:2aed:: with SMTP id c42mr5587158qta.202.1591290821135;\r\n        \
@@ -335,5 +338,23 @@ mod tests {
         assert!(rest.starts_with(b"In bug 1630935 [1], I intend to deprecate support for drawing"));
         assert!(headers.inner.contains_key("X-Received"));
         assert_eq!(headers.get("X-Received").unwrap().content.len(), 2);
+    }
+
+    #[test]
+    fn test_take_headers_with_trailing_whitespace() {
+        let article = TEXT_ARTICLE_TRAILING_WHITESPACE.splitn(2, '\n').nth(1).unwrap();
+        let (rest, headers) = take_headers(article.as_bytes()).unwrap();
+        assert!(rest.starts_with(b"In bug 1630935 [1], I intend to deprecate support for drawing"));
+        assert!(headers.inner.contains_key("Subject"));
+        let subject = headers.get("Subject").unwrap();
+        assert_eq!(subject.content, vec!["ThisSubjectHasTrailingWhitespace "]);
+
+        assert!(headers.inner.contains_key("X-HeaderA"));
+        let header_a = headers.get("X-HeaderA").unwrap();
+        assert_eq!(header_a.content, vec![String::from_utf8_lossy(b"this folded header has trailing whitespace on the first line \r\n and also has it at the end of this line. ")]);
+
+        assert!(headers.inner.contains_key("X-HeaderB"));
+        let header_b = headers.get("X-HeaderB").unwrap();
+        assert_eq!(header_b.content, vec![String::from_utf8_lossy(b"this folded header has no trailing whitespace on the first line\r\n but does have it on this line. ")]);
     }
 }

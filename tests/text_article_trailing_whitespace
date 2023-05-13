@@ -1,0 +1,16 @@
+Message-ID: <msg.id>
+X-HeaderA: this folded header has trailing whitespace on the first line 
+ and also has it at the end of this line. 
+X-HeaderB: this folded header has no trailing whitespace on the first line
+ but does have it on this line. 
+Subject: ThisSubjectHasTrailingWhitespace 
+From: bob@bob.com
+Newsgroups: alt.foo.bar
+Date: Sun, 07 May 2023 04:23:01 GMT
+X-Received-Bytes: 12345
+
+In bug 1630935 [1], I intend to deprecate support for drawing
+stretched MathML operators using the STIXGeneral fonts with a use
+counter, deprecation warning, and a pref to gate the feature (off by
+default on nightly).
+.
